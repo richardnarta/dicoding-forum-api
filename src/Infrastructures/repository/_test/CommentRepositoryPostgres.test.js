@@ -1,4 +1,5 @@
 const CommentsTableTestHelper = require('../../../../tests/CommentsTableTestHelper');
+const CommentsLikesTableTestHelper = require('../../../../tests/CommentsLikesTableTestHelper');
 const NotFoundError = require('../../../Commons/exceptions/NotFoundError');
 const pool = require('../../database/postgres/pool');
 const CommentRepositoryPostgres = require('../CommentRepositoryPostgres');
@@ -6,6 +7,7 @@ const CommentRepositoryPostgres = require('../CommentRepositoryPostgres');
 describe('CommentRepositoryPostgres', () => {
   afterEach(async () => {
     await CommentsTableTestHelper.cleanTable();
+    await CommentsLikesTableTestHelper.cleanTable();
   });
 
   afterAll(async () => {
@@ -188,5 +190,144 @@ describe('CommentRepositoryPostgres', () => {
     await expect(commentRepositoryPostgres.isCommentAvailable('comment-123'))
         .resolves.not.toThrowError(NotFoundError);
       });
+  });
+
+  describe('addCommentLike function', () => {
+    it('like should persist in database after adding', async () => {
+      // Arrange
+      const likeData = {
+        commentId: 'comment-123',
+        username: 'dicoding',
+      };
+      const fakeIdGenerator = () => '123'; // stub!
+      const commentRepositoryPostgres = new CommentRepositoryPostgres(pool, fakeIdGenerator);
+
+      // Action
+      await commentRepositoryPostgres.addCommentLike(likeData);
+
+      // Assert
+      const like = await CommentsLikesTableTestHelper.checkCommentLike(
+        {
+          comment_id: 'comment-123',
+          username: 'dicoding',
+        }
+      );
+      expect(like).toEqual(true);
+    });
+  });
+
+  describe('getCommentsLikes function', () => {
+    it('should return expected like counts', async () => {
+      // Arrange
+      await CommentsLikesTableTestHelper.addCommentLike(
+        {
+          comment_id: 'comment-123',
+          username: 'dicoding'
+        }
+      )
+
+      await CommentsLikesTableTestHelper.addCommentLike(
+        {
+          comment_id: 'comment-123',
+          username: 'john'
+        }
+      )
+
+      await CommentsLikesTableTestHelper.addCommentLike(
+        {
+          comment_id: 'comment-234',
+          username: 'dicoding'
+        }
+      )
+
+      const fakeIdGenerator = () => '123'; // stub!
+      const commentRepositoryPostgres = new CommentRepositoryPostgres(pool, fakeIdGenerator);
+
+      // Action
+      const result = await commentRepositoryPostgres.getCommentsLikes(['comment-123', 'comment-234']);
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(result).toContainEqual(
+        {
+          comment_id: 'comment-123',
+          counts: '2'
+        }
+      );
+      expect(result).toContainEqual(
+        {
+          comment_id: 'comment-234',
+          counts: '1'
+        }
+      );
+    });
+  });
+
+  describe('isCommentLikedByUser function', () => {
+    it('should return true if comment is liked by user', async () => {
+      // Arrange
+      await CommentsLikesTableTestHelper.addCommentLike(
+        {
+          comment_id: 'comment-123',
+          username: 'dicoding'
+        }
+      )
+      const fakeIdGenerator = () => '123'; // stub!
+      const commentRepositoryPostgres = new CommentRepositoryPostgres(pool, fakeIdGenerator);
+
+      // Action
+      const status = await commentRepositoryPostgres.isCommentLikedByUser({
+        commentId: 'comment-123',
+        username: 'dicoding'
+      });
+
+      // Assert
+      expect(status).toEqual(true);
+    });
+
+    it('should return false if comment is not liked by user', async () => {
+      // Arrange
+      const fakeIdGenerator = () => '123'; // stub!
+      const commentRepositoryPostgres = new CommentRepositoryPostgres(pool, fakeIdGenerator);
+
+      // Action
+      const status = await commentRepositoryPostgres.isCommentLikedByUser({
+        commentId: 'comment-123',
+        username: 'dicoding'
+      });
+
+      // Assert
+      expect(status).toEqual(false);
+    });
+  });
+
+  describe('deleteCommentLike function', () => {
+    it('like should not persist in database after deletion', async () => {
+      // Arrange
+      await CommentsLikesTableTestHelper.addCommentLike(
+        {
+          comment_id: 'comment-123',
+          username: 'dicoding'
+        }
+      )
+
+      const fakeIdGenerator = () => '123'; // stub!
+      const commentRepositoryPostgres = new CommentRepositoryPostgres(pool, fakeIdGenerator);
+
+      // Action
+      await commentRepositoryPostgres.deleteCommentLike({
+        commentId: 'comment-123',
+        username: 'dicoding'
+      });
+
+      // Assert
+      const like = await CommentsLikesTableTestHelper.checkCommentLike(
+        {
+          comment_id: 'comment-123',
+          username: 'dicoding',
+        }
+      );
+      expect(like).toEqual(false);
+    });
   });
 });

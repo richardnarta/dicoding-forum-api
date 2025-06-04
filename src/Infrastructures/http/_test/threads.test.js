@@ -6,6 +6,7 @@ const UsersTableTestHelper = require('../../../../tests/UsersTableTestHelper');
 const AuthenticationsTableTestHelper = require('../../../../tests/AuthenticationsTableTestHelper');
 const container = require('../../container');
 const createServer = require('../createServer');
+const CommentsLikesTableTestHelper = require('../../../../tests/CommentsLikesTableTestHelper');
 
 describe('/threads endpoint', () => {
   afterAll(async () => {
@@ -18,6 +19,7 @@ describe('/threads endpoint', () => {
     await ThreadsTableTestHelper.cleanTable();
     await CommentsTableTestHelper.cleanTable();
     await RepliesTableTestHelper.cleanTable();
+    await CommentsLikesTableTestHelper.cleanTable();
   });
 
   describe('when GET /threads/{threadId}', () => {
@@ -1362,6 +1364,176 @@ describe('/threads endpoint', () => {
       expect(response.statusCode).toEqual(404);
       expect(responseJson.status).toEqual('fail');
       expect(responseJson.message).toEqual('thread tidak ditemukan');
+    });
+  });
+
+  describe('/threads/{threadId}/comments/{commentId}/likes', () => {
+    let server = null;
+    let token = null;
+
+    beforeEach(async () => {
+      // Arrange
+      await ThreadsTableTestHelper.addThread(
+        {
+          id: 'thread-123',
+          title: 'thread-title',
+          body: 'thread-body',
+          owner_username: 'dicoding'
+        }
+      );
+
+      await CommentsTableTestHelper.addComment(
+        {
+          id: 'comment-123',
+          content: 'isi-komen', 
+          thread_id: 'thread-123', 
+          owner_username: 'dicoding',
+          is_deleted: false,
+        }
+      );
+
+      server = await createServer(container);
+
+      await server.inject({
+        method: 'POST',
+        url: '/users',
+        payload: {
+          username: 'dicoding',
+          password: 'secret',
+          fullname: 'Dicoding Indonesia',
+        },
+      });
+
+      // Login
+      const loginResponse = await server.inject({
+        method: 'POST',
+        url: '/authentications',
+        payload: {
+          username: 'dicoding',
+          password: 'secret',
+        },
+      });
+
+      const loginResponseJson = JSON.parse(loginResponse.payload);
+
+      token = loginResponseJson.data.accessToken;
+    });
+
+    it('should response 404 when thread is invalid', async () => {
+      // Arrange
+      const headers = {
+        Authorization: `Bearer ${token}`
+      }
+
+      // Action
+      const response = await server.inject({
+        method: 'PUT',
+        url: '/threads/thread-345/comments/comment-123/likes',
+        headers: headers
+      });
+
+      // Assert
+      const responseJson = JSON.parse(response.payload);
+      expect(response.statusCode).toEqual(404);
+      expect(responseJson.status).toEqual('fail');
+      expect(responseJson.message).toEqual('thread tidak ditemukan');
+    });
+
+    it('should response 404 when comment is invalid', async () => {
+      // Arrange
+      const headers = {
+        Authorization: `Bearer ${token}`
+      }
+
+      // Action
+      const response = await server.inject({
+        method: 'PUT',
+        url: '/threads/thread-123/comments/comment-345/likes',
+        headers: headers
+      });
+
+      // Assert
+      const responseJson = JSON.parse(response.payload);
+      expect(response.statusCode).toEqual(404);
+      expect(responseJson.status).toEqual('fail');
+      expect(responseJson.message).toEqual('komentar tidak ditemukan');
+    });
+
+    it('should response 400 when comment has been deleted', async () => {
+      // Arrange
+      await CommentsTableTestHelper.deleteCommentsById('comment-123');
+
+      const headers = {
+        Authorization: `Bearer ${token}`
+      }
+
+      // Action
+      const response = await server.inject({
+        method: 'PUT',
+        url: '/threads/thread-123/comments/comment-123/likes',
+        headers: headers
+      });
+
+      // Assert
+      const responseJson = JSON.parse(response.payload);
+      expect(response.statusCode).toEqual(400);
+      expect(responseJson.status).toEqual('fail');
+      expect(responseJson.message).toEqual('komentar telah dihapus');
+    });
+
+    it('should response 200 when success liking comment', async () => {
+      // Arrange
+      const headers = {
+        Authorization: `Bearer ${token}`
+      }
+
+      // Action
+      const response = await server.inject({
+        method: 'PUT',
+        url: '/threads/thread-123/comments/comment-123/likes',
+        headers: headers
+      });
+
+      // Assert
+      const responseJson = JSON.parse(response.payload);
+      expect(response.statusCode).toEqual(200);
+      expect(responseJson.status).toEqual('success');
+      
+      expect(await CommentsLikesTableTestHelper.checkCommentLike({
+        comment_id: 'comment-123',
+        username: 'dicoding'
+      })).toEqual(true);
+    });
+
+    it('should response 200 when success unliking comment', async () => {
+      // Arrange
+      await CommentsLikesTableTestHelper.addCommentLike(
+        {
+          comment_id: 'comment-123',
+          username: 'dicoding'
+        }
+      );
+
+      const headers = {
+        Authorization: `Bearer ${token}`
+      }
+
+      // Action
+      const response = await server.inject({
+        method: 'PUT',
+        url: '/threads/thread-123/comments/comment-123/likes',
+        headers: headers
+      });
+
+      // Assert
+      const responseJson = JSON.parse(response.payload);
+      expect(response.statusCode).toEqual(200);
+      expect(responseJson.status).toEqual('success');
+      
+      expect(await CommentsLikesTableTestHelper.checkCommentLike({
+        comment_id: 'comment-123',
+        username: 'dicoding'
+      })).toEqual(false);
     });
   });
 });

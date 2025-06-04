@@ -58,8 +58,15 @@ describe('GetThreadUseCase', () => {
 
     const mockCommentRepository = new CommentRepository();
     mockCommentRepository.getCommentsByThreadId = jest.fn()
-      .mockImplementation(() => Promise.resolve([
+      .mockImplementationOnce(() => Promise.resolve([
         mockedComment, mockedDeletedComment
+      ]));
+      mockCommentRepository.getCommentsLikes = jest.fn()
+      .mockImplementationOnce(() => Promise.resolve([
+        {
+          comment_id: 'comment-123',
+          counts: '3'
+        }
       ]));
 
     const mockReplyRepository = new ReplyRepository();
@@ -103,6 +110,7 @@ describe('GetThreadUseCase', () => {
             }
           ],
           content: mockedComment.content,
+          likeCount: 3
         },
         {
           id: mockedDeletedComment.id,
@@ -110,11 +118,13 @@ describe('GetThreadUseCase', () => {
           date: mockedDeletedComment.timestamp,
           replies: [],
           content: "**komentar telah dihapus**",
+          likeCount: 0
         }
       ]
     });
     expect(mockThreadRepository.getThreadById).toBeCalledWith(thread_id);
     expect(mockCommentRepository.getCommentsByThreadId).toBeCalledWith(thread_id);
+    expect(mockCommentRepository.getCommentsLikes).toBeCalledWith(['comment-123', 'comment-456']);
     expect(mockReplyRepository.getRepliesByCommentId).toBeCalledWith(
       ['comment-123', 'comment-456']
     );

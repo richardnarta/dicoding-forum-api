@@ -27,7 +27,8 @@ DomainErrorTranslator._directories = {
   'MANAGE_COMMENT_USE_CASE.NOT_THE_OWNER_OF_COMMENT': new AuthorizationError('anda tidak dapat menghapus comment yang bukan milik anda'),
   'MANAGE_COMMENT_USE_CASE.COMMENT_HAS_BEEN_DELETED': new InvariantError('komentar telah dihapus'),
   'MANAGE_REPLY_USE_CASE.NOT_THE_OWNER_OF_REPLY': new AuthorizationError('anda tidak dapat menghapus balasan yang bukan milik anda'),
-  'MANAGE_REPLY_USE_CASE.REPLY_HAS_BEEN_DELETED': new InvariantError('balasan telah dihapus')
+  'MANAGE_REPLY_USE_CASE.REPLY_HAS_BEEN_DELETED': new InvariantError('balasan telah dihapus'),
+  'UPDATE_COMMENT_LIKE_USE_CASE.COMMENT_HAS_BEEN_DELETED': new InvariantError('komentar telah dihapus'),
 };
 
 module.exports = DomainErrorTranslator;
