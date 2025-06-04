@@ -1,0 +1,53 @@
+name: Continuous Integration
+
+on: 
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+ 
+    strategy:
+      matrix:
+        node-version: ['18.x']
+    
+    services:
+      postgres: 
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 123
+          POSTGRES_DB: forumapi
+        ports:
+          - 5432:5432 
+        options: >-
+          --health-cmd "pg_isready -U postgres -d forumapi -q"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5 
+ 
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v2
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: npm install migrate and test
+      run: |
+        npm install
+        npm run migrate up
+        npm run test
+      env:
+        CI: true
+        HOST: localhost
+        PORT: 3000
+        PGHOST: localhost
+        PGUSER: postgres
+        PGDATABASE: forumapi
+        PGPASSWORD: 123
+        PGPORT: 5432
+        ACCESS_TOKEN_KEY: secret
+        REFRESH_TOKEN_KEY: secret2
+        ACCCESS_TOKEN_AGE: 3000
