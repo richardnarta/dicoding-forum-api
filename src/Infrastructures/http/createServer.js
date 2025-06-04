@@ -49,6 +49,17 @@ const createServer = async (container) => {
     },
   ]);
 
+  server.route({
+    method: 'GET',
+    path: '/',
+    handler: (request, h) => {
+      return h.response({
+        project: 'Forum API',
+        version: '1.0.0'
+      }).code(200);
+    },
+  });
+
   server.ext('onPreResponse', (request, h) => {
     // mendapatkan konteks response dari request
     const { response } = request;
