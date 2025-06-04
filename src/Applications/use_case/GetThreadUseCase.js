@@ -13,6 +13,16 @@ class GetThreadUseCase {
 
     const commentIds = comments.map(comment => comment.id);
 
+    const likes = await this._commentRepository.getCommentsLikes(commentIds);
+
+    const likesMap = new Map();
+
+    for (const like of likes) {
+      if (!likesMap.has(like.comment_id)) {
+        likesMap.set(like.comment_id, like.counts);
+      }
+    }
+
     let replies = [];
 
     replies = await this._replyRepository.getRepliesByCommentId(commentIds);
@@ -51,7 +61,8 @@ class GetThreadUseCase {
           username: comment.owner_username,
           date: comment.timestamp,
           replies: commentReplies,
-          content: comment.content
+          content: comment.content,
+          likeCount: parseInt(likesMap.get(comment.id)) || 0
         }
       );
     }
