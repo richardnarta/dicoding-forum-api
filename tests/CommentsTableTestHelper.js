@@ -40,8 +40,8 @@ const CommentsTableTestHelper = {
 
   async deleteCommentsById(id) {
     const query = {
-      text: 'UPDATE comments SET is_deleted = 0 WHERE id = $1',
-      values: [id],
+      text: 'UPDATE comments SET is_deleted = $1 WHERE id = $2',
+      values: [true, id],
     };
 
     const result = await pool.query(query);
